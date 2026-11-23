@@ -21,6 +21,7 @@ class TestUnit(unittest.TestCase):
 			'clouds': '9'
 		}
 		response = self.client.post('/', data=form_data)
+		self.assertEqual(response.status_code, 400)
 
 	# Complete this function to test that the model can be loaded correctly
 	def test_model_can_be_loaded(self):
