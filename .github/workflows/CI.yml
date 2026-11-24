@@ -44,13 +44,13 @@ jobs:
 
       # (c) Run each Task 2 test file in its own step, in order
       - name: Run smoke test
-        run: python -m unittest -v smoke_test.py
+        run: python -m unittest -v tests/smoke_test.py
 
       - name: Run unit test
-        run: python -m unittest -v unit_test.py
+        run: python -m unittest -v tests/unit_test.py
 
       - name: Run integration test
-        run: python -m unittest -v integration_test.py
+        run: python -m unittest -v tests/integration_test.py
 
       # (d) Build a Docker image from the Dockerfile
       #     (Docker comes preinstalled on GitHub's ubuntu-latest runners)
