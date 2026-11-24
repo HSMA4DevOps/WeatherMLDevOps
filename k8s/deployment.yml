@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: weather-ml-app
+  labels:
+    app: weather-ml-app
+spec:
+  # Several replicas so pods can be replaced one at a time (Task 3e)
+  replicas: 3
+  minReadySeconds: 5
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: weather-ml-app
+
+  # Zero-downtime rolling update: start one new pod at a time and never
+  # remove an old pod until its replacement is ready.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+
+  template:
+    metadata:
+      labels:
+        app: weather-ml-app
+    spec:
+      containers:
+        - name: weather-ml-app
+          # CD.yml replaces this with <dockerhub-user>/weather-ml-app:<version>-<commit>
+          image: IMAGE_PLACEHOLDER
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+
+          # Pod only gets traffic once the app answers (allows time to load the ML model)
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 6
+
+          # Restart the container if it stops responding
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

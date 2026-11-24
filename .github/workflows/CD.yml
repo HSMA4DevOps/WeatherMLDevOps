@@ -1,0 +1,61 @@
+name: CD
+
+# (g) Runs automatically when the CI workflow finishes on main
+on:
+  workflow_run:
+    workflows: [ "CI" ]
+    types: [ completed ]
+    branches: [ main ]
+
+jobs:
+  deploy:
+    # Only deploy builds that passed CI and came from a push (not a pull request)
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event != 'pull_request'
+
+    # Self-hosted runner on the production EC2 server (Minikube set up by Task 3)
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout the commit that passed CI
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Work out which image CI pushed
+        run: |
+          VERSION=$(grep -m1 'IMAGE_VERSION:' .github/workflows/CI.yml | awk '{print $2}')
+          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
+          IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/weather-ml-app:${VERSION}-${SHORT_SHA}"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          echo "Deploying $IMAGE"
+
+      - name: Check Kubernetes is running
+        run: |
+          minikube status || minikube start
+          kubectl get nodes
+
+      - name: Deploy to Kubernetes using YAML files
+        run: |
+          # Put the new image into the manifest and apply it.
+          # The new tag changes the pod template, which starts a rolling update.
+          sed "s|IMAGE_PLACEHOLDER|$IMAGE|g" k8s/deployment.yml | kubectl apply -f -
+          kubectl apply -f k8s/service.yml
+
+      - name: Wait for rolling update to finish
+        run: kubectl rollout status deployment/weather-ml-app --timeout=300s
+
+      - name: Check deployment
+        run: |
+          kubectl get deployments,pods,services -l app=weather-ml-app -o wide
+          kubectl rollout history deployment/weather-ml-app
+          curl --fail --retry 5 --retry-delay 5 -s -o /dev/null -w "HTTP %{http_code}\n" \
+            http://$(minikube ip):30080/
+
+      # If the new version never becomes healthy, go back to the last working one
+      - name: Roll back on failure
+        if: failure()
+        run: |
+          kubectl rollout undo deployment/weather-ml-app
+          kubectl rollout status deployment/weather-ml-app --timeout=300s
