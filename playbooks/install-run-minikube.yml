@@ -1,0 +1,23 @@
+- name: Install and start Minikube
+  hosts: localhost
+
+  roles:
+    - role: gantsign.minikube
+      minikube_version: "1.32.0"
+      minikube_architecture: "amd64"
+      minikube_download_dir: "{{ ansible_facts.env.HOME }}/Downloads"
+
+  tasks:
+    - name: Add Ansible user to the docker group
+      become: true
+      ansible.builtin.user:
+        name: "{{ ansible_user_id }}"
+        groups: docker
+        append: true
+    - name: Start Minikube
+      ansible.builtin.command:
+        cmd: minikube start --driver=docker
+      environment:
+        HOME: "{{ ansible_facts.env.HOME }}"
+      register: minikube_start
+      changed_when: "'Done!' in minikube_start.stdout"
