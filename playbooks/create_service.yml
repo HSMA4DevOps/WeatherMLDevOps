@@ -1,0 +1,33 @@
+- name: Create service for WeatherML
+  hosts: localhost
+  become: yes
+
+  tasks:
+    - name: Create a new service
+      copy:
+        content: |
+          [Unit]
+          Description=My App Service
+          After=network.target
+
+          [Service]
+          User=my_app_user
+          ExecStart=/usr/bin/my_app
+          Restart=always
+
+        dest: /etc/systemd/system/my_app.service
+        mode: '0644'
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Start and enable Service
+      service:
+        name: my_app
+        state: started
+        enabled: yes
+      when: ansible_distribution == 'Ubuntu'
+
