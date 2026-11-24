@@ -1,0 +1,28 @@
+- name: Deploy DockerHub Image
+  hosts: localhost
+  become: yes
+
+  vars:
+    image_name: "sball302/weather-ml-app"
+    image_tag: "latest"
+    container_name: "weather-ml-app"
+  tasks:
+    - name: check Docker is installed
+      package:
+        name: docker-ce
+        state: present
+
+    - name: Create Kubernetes deployment and service
+      become: false
+      ansible.builtin.shell: |
+        kubectl create deployment weatherml \
+          --image=image_name \
+          --replicas=3 \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+        kubectl expose deployment weatherml \
+          --type=NodePort \
+          --port=5000 \
+          --dry-run=client -o yaml | kubectl apply -f -
+      args:
+        executable: /bin/bash
