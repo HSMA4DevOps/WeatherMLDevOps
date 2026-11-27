@@ -25,7 +25,7 @@ jobs:
 
       - name: Work out which image CI pushed
         run: |
-          VERSION=$(grep -m1 'IMAGE_VERSION:' .github/workflows/CI.yml | awk '{print $3}' | tr -d '\r"\047 ')
+          VERSION=$(grep -m1 'IMAGE_VERSION:' .github/workflows/CI.yml | awk '{print $2}' | tr -d '\r"\047 ')
           SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
           IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/weather-ml-app:${VERSION}-${SHORT_SHA}"
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
